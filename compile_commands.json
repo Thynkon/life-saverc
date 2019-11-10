@@ -1,0 +1,15 @@
+[
+    {
+        "arguments": [
+            "gcc",
+            "-c",
+            "-Wall",
+            "-g",
+            "-o",
+            "life-saverc",
+            "life-saverc.c"
+        ],
+        "directory": "/home/mferreira/dev/life-saverc",
+        "file": "life-saverc.c"
+    }
+]
