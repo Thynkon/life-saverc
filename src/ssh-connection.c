@@ -12,7 +12,7 @@
 
 #include "ssh-connection.h"
 
-int verbosity = 0;
+int verbosity = SSH_LOG_INFO;
 
 ssh_session connect_ssh(const char *host, const char *user, int verbosity){
 	ssh_session session;

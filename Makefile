@@ -7,7 +7,7 @@ CFLAGS = -Wall -g
 LFLAGS = -L/usr/lib64
 LIBS = -larchive -lssh
 
-SRCS = *.c
+SRCS = src/*.c
 
 # Executable's name
 MAIN = life-saverc
