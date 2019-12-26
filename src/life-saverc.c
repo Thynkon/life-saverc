@@ -25,39 +25,6 @@
 #include "life-saverc.h"
 #include "ssh-connection.h"
 
-// Based on: https://stackoverflow.com/a/309105
-// Concatenate n strings
-// Useful when we don't know neither the size of the strings nor the number of strings to concatenate
-char* strmcat(char *header, const char **words) {
-    size_t message_len;
-	size_t num_words;
-    char *message = NULL;
-
-	if (header == NULL) {
-		return NULL;
-	}
-
-	if (words == NULL) {
-		return NULL;
-	}
-
-	message_len = strlen(header) + 1; // + 1 for terminating NULL
-	num_words = sizeof(words) / sizeof(char *);
-
-	message = strdup(header);
-	if (message == NULL) {
-		return NULL;
-	}
-
-    for(size_t i = 0; i < num_words; ++i) {
-       message_len += strlen(words[i]);
-       message = (char*) realloc(message, message_len);
-       strncat(message, words[i], message_len);
-    }
-
-	return message;
-}
-
 void msg(const char *m) {
 	write(1, m, strlen(m));
 }
@@ -196,7 +163,6 @@ int main(int argc, char **argv) {
 	char *err_msg = NULL;
 	char *filename = NULL;
 	char *output_filename = NULL;
-	const char *output_file_extension[] = {NULL};
 	int compression = 0;
 
 	int verbose = 0;
@@ -213,9 +179,15 @@ int main(int argc, char **argv) {
 	struct location *src = NULL;
 	struct location *dest = NULL;
 
+	// Program return status
 	int status = 0;
 
 	int str_len = 0;
+
+	// Full path of compressed file that will be used to generate
+	// the string representation of the source ssh location 
+	char *local_path = NULL;
+
 	// String representation of source location
 	char *src_str = NULL;
 	// String representation of destination location
@@ -223,35 +195,58 @@ int main(int argc, char **argv) {
 
 	// default compression algorithm set to bz2
 	compression = 'j';
-	output_file_extension[0] = ".tar.bz2";
 
-	while ((option = getopt_long(argc, argv, "hf:jz", long_options, &option_index)) != -1) {
+	while ((option = getopt_long(argc, argv, "hf:jo:z", long_options, &option_index)) != -1) {
 		switch(option) {
 		case 'h':
 			usage();
 			break;
 
 		case 'f':
-			if ((filename = strdup(optarg)) == NULL) {
-				fprintf(stderr, "Failed to retrieve file to backup!");
+			filename = strdup(optarg);
+			if (filename == NULL) {
+				fprintf(stderr, "Failed to retrieve file to backup!\n");
+				status = EXIT_FAILURE;
 
-				exit(EXIT_FAILURE);
+				goto end;
 			}
 			break;
 
 		case 'j':
 			compression = option;
-			output_file_extension[0] = ".tar.bz2";
+			break;
+
+		case 'o':
+			output_filename = strdup(optarg);
+			if (output_filename == NULL) {
+				fprintf(stderr, "Failed to retrieve output filename!\n");
+				status = EXIT_FAILURE;
+
+				goto end;
+			}
 			break;
 
 		case 'z':
 			compression = option;
-			output_file_extension[0] = ".tar.gz";
 			break;
 
 		default:
 			break;
 		}
+	}
+
+	if (filename == NULL) {
+		fprintf(stderr, "Output filename is not set!\n");
+
+		status = EXIT_FAILURE;
+		goto end;
+	}
+
+	if (output_filename == NULL) {
+		fprintf(stderr, "Output filename is not set!\n");
+
+		status = EXIT_FAILURE;
+		goto end;
 	}
 
 	// Check if file to backup exists
@@ -264,12 +259,6 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	output_filename = strmcat(filename, output_file_extension);
-	if (output_filename == NULL) {
-		status = EXIT_FAILURE;
-		goto end;
-	}
-
 	if (create(output_filename, compression, filename, verbose) < 0) {
 		if (asprintf(&err_msg, "Failed to compress %s", filename) > 0) {
 			errmsg(err_msg);
@@ -279,14 +268,23 @@ int main(int argc, char **argv) {
 		}
 	}
 
+	// Retrieve real path of file to use it on source ssh location
+	local_path = realpath(output_filename, NULL);
+	if (local_path == NULL) {
+		perror("realpath");
+		
+		status = EXIT_FAILURE;
+		goto end;
+	}
+
 	// Generate string representation of source location
-	str_len = strlen(USERNAME) + 1 + strlen(HOST) + 1 + strlen("/home/thynkon/Downloads/test.txt") + 1;
+	str_len = strlen(USERNAME) + 1 + strlen(HOST) + 1 + strlen(local_path) + 1;
 	src_str = (char*) malloc(str_len);
 	if (src_str == NULL) {
 		status = EXIT_FAILURE;
 		goto end;
 	}
-	snprintf(src_str, str_len, "%s@%s:%s", USERNAME, HOST, "/home/thynkon/Downloads/test.txt");
+	snprintf(src_str, str_len, "%s@%s:%s", USERNAME, HOST, local_path);
 
 	// Parse and create source location
     src = parse_location(src_str);
@@ -344,6 +342,11 @@ end:
 
 	if (output_filename != NULL) {
 		free(output_filename);
+		output_filename = NULL;
+	}
+
+	if (local_path != NULL) {
+		free(local_path);
 		output_filename = NULL;
 	}
 
