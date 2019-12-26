@@ -8,6 +8,8 @@
 #include <regex.h>
 
 #include <sys/stat.h>
+#include <sys/types.h>
+
 #include <libssh/libssh.h>
 
 #include "ssh-connection.h"
