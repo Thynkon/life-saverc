@@ -5,7 +5,7 @@ CFLAGS = -Wall -g
 
 # Define library paths in addition to /usr/lib
 LFLAGS = -L/usr/lib64
-LIBS = -larchive
+LIBS = -larchive -lssh
 
 SRCS = *.c
 

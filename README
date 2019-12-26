@@ -1,3 +1,3 @@
 Dependencies:
-dnf install libarchive-devel
-apt install libarchive-dev
+dnf install libarchive-devel libssh-devel
+apt install libarchive-dev libssh-dev

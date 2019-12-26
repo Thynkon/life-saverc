@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include <errno.h>
+#include <regex.h>
 
 #include <getopt.h>
 #include <string.h>
@@ -19,16 +20,34 @@
 
 #include <fcntl.h>
 
+#include <libssh/libssh.h>
+
 #include "life-saverc.h"
+#include "ssh-connection.h"
 
 // Based on: https://stackoverflow.com/a/309105
 // Concatenate n strings
 // Useful when we don't know neither the size of the strings nor the number of strings to concatenate
-char *strmcat(char *header, const char **words) {
-    size_t message_len = strlen(header) + 1; // + 1 for terminating NULL 
-	size_t num_words = sizeof(words) / sizeof(char *);
-    char *message = (char*) malloc(message_len);
-    strncat(message, header, message_len);
+char* strmcat(char *header, const char **words) {
+    size_t message_len;
+	size_t num_words;
+    char *message = NULL;
+
+	if (header == NULL) {
+		return NULL;
+	}
+
+	if (words == NULL) {
+		return NULL;
+	}
+
+	message_len = strlen(header) + 1; // + 1 for terminating NULL
+	num_words = sizeof(words) / sizeof(char *);
+
+	message = strdup(header);
+	if (message == NULL) {
+		return NULL;
+	}
 
     for(size_t i = 0; i < num_words; ++i) {
        message_len += strlen(words[i]);
@@ -112,6 +131,10 @@ int create(char *filename, int compression, char *argv, int verbose) {
 		int needcr = 0;
 
 		entry = archive_entry_new();
+		if (entry == NULL) {
+			break;
+		}
+
 		r = archive_read_next_header2(disk, entry);
 		if (r == ARCHIVE_EOF) {
 			break;
@@ -152,6 +175,7 @@ int create(char *filename, int compression, char *argv, int verbose) {
 		}
 
 		archive_entry_free(entry);
+		entry = NULL;
 		if (needcr) {
 			msg("\n");
 		}
@@ -159,9 +183,11 @@ int create(char *filename, int compression, char *argv, int verbose) {
 
 	archive_read_close(disk);
 	archive_read_free(disk);
+	disk = NULL;
 
 	archive_write_close(a);
 	archive_write_free(a);
+	a = NULL;
 
 	return 0;
 }
@@ -183,6 +209,17 @@ int main(int argc, char **argv) {
 		{"gzip", no_argument, 0, 'z'},
 		{"bzip2", no_argument, 0, 'j'}
 	};
+
+	struct location *src = NULL;
+	struct location *dest = NULL;
+
+	int status = 0;
+
+	int str_len = 0;
+	// String representation of source location
+	char *src_str = NULL;
+	// String representation of destination location
+	char *dest_str = NULL;
 
 	// default compression algorithm set to bz2
 	compression = 'j';
@@ -222,22 +259,82 @@ int main(int argc, char **argv) {
 		if (asprintf(&err_msg, "%s does not exist\n", filename) > 0) {
 			errmsg(err_msg);
 
-			free(err_msg);
-			err_msg = NULL;
+			status = EXIT_FAILURE;
+			goto end;
 		}
-
-		exit(EXIT_FAILURE);
 	}
 
 	output_filename = strmcat(filename, output_file_extension);
+	if (output_filename == NULL) {
+		status = EXIT_FAILURE;
+		goto end;
+	}
 
 	if (create(output_filename, compression, filename, verbose) < 0) {
 		if (asprintf(&err_msg, "Failed to compress %s", filename) > 0) {
 			errmsg(err_msg);
 
-			free(err_msg);
-			err_msg = NULL;
+			status = EXIT_FAILURE;
+			goto end;
 		}
+	}
+
+	// Generate string representation of source location
+	str_len = strlen(USERNAME) + 1 + strlen(HOST) + 1 + strlen("/home/thynkon/Downloads/test.txt") + 1;
+	src_str = (char*) malloc(str_len);
+	if (src_str == NULL) {
+		status = EXIT_FAILURE;
+		goto end;
+	}
+	snprintf(src_str, str_len, "%s@%s:%s", USERNAME, HOST, "/home/thynkon/Downloads/test.txt");
+
+	// Parse and create source location
+    src = parse_location(src_str);
+    if (src == NULL) {
+		fprintf(stderr, "Failed to parse src location\n");
+
+		status = EXIT_FAILURE;
+		goto end;
+    }
+
+	// Generate string representation of destination location
+	str_len = strlen(USERNAME) + 1 + strlen(HOST) + 1 + strlen(REMOTE_DIR) + 1;
+	dest_str = (char*) malloc(str_len);
+	if (dest_str == NULL) {
+		status = EXIT_FAILURE;
+		goto end;
+	}
+	snprintf(dest_str, str_len, "%s@%s:%s", USERNAME, REMOTE_HOST, REMOTE_DIR);
+
+	// Parse and create destination location
+    dest = parse_location(dest_str);
+    if (dest == NULL) {
+		fprintf(stderr, "Failed to parse dest location\n");
+
+		status = EXIT_FAILURE;
+		goto end;
+    }
+
+	// Open a connection to each location
+	if (open_location(src, READ) < 0) {
+		status = EXIT_FAILURE;
+		goto end;
+	}
+
+	if (open_location(dest, WRITE) < 0) {
+		status = EXIT_FAILURE;
+		goto end;
+	}
+
+	if (do_copy(src, dest, 0) < 0) {
+		status = EXIT_FAILURE;
+		goto end;
+	}
+
+end:
+	if (err_msg != NULL) {
+		free(err_msg);
+		err_msg = NULL;
 	}
 
 	if (filename != NULL) {
@@ -250,5 +347,31 @@ int main(int argc, char **argv) {
 		output_filename = NULL;
 	}
 
-	return EXIT_SUCCESS;
+	if (src_str != NULL) {
+		free(src_str);
+		src_str = NULL;
+	}
+
+	if (dest_str != NULL) {
+		free(dest_str);
+		dest_str = NULL;
+	}
+
+	if (src != NULL) {
+		if (src->session) {
+			close_location(src);
+		}
+		location_free(src);
+		src = NULL;
+	}
+
+	if (dest != NULL) {
+		if (dest->session) {
+			close_location(dest);
+		}
+		location_free(dest);
+		dest = NULL;
+	}
+
+	return status;
 }
