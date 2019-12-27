@@ -1,4 +1,6 @@
-#define _GNU_SOURCE
+// This header file is imported before stdio.h because
+// it might define _GNU_SOUCE (gnu extensions)
+#include "asprintf.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,10 +16,15 @@
 
 #include <libssh/libssh.h>
 
+// contains contains like LOG_ERR, LOG_INFO, etc...
+#include <sys/syslog.h>
+#include <syslog.h>
+
 #include "life-saverc.h"
 #include "error-format.h"
 #include "compression.h"
 #include "ssh-connection.h"
+#include "verbose.h"
 
 void usage(void) {
 	char *help_msg = "Usage:\n"
@@ -26,25 +33,27 @@ void usage(void) {
 		"-j, --bzip2\t\tFilter the archive through bzip2\n"
 		"-z, --gzip\t\tFilter the archive through gzip";
 
-	errmsg(help_msg);
+	log_message(LOG_ERR, help_msg);
 	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char **argv) {
-	char *err_msg = NULL;
+	char *message = NULL;
 	char *filename = NULL;
 	char *output_filename = NULL;
 	int compression = 0;
 
-	int verbose = 0;
 	int option = 0;
 	int option_index = 0;
 
 	struct option long_options[] = {
-		{"help", no_argument, 0, 'h'},
-		{"file", required_argument, 0, 'f'},
-		{"gzip", no_argument, 0, 'z'},
-		{"bzip2", no_argument, 0, 'j'}
+		{"file",		required_argument,	0, 'f'},
+		{"help",		no_argument,		0, 'h'},
+		{"bzip2",		no_argument,		0, 'j'},
+		{"output",		required_argument,	0, 'o'},
+		{"quiet",		required_argument,	0, 'q'},
+		{"verbosity", 	required_argument,	0, 'v'},
+		{"gzip",		no_argument,		0, 'z'}
 	};
 
 	struct location *src = NULL;
@@ -52,8 +61,6 @@ int main(int argc, char **argv) {
 
 	// Program return status
 	int status = 0;
-
-	int str_len = 0;
 
 	// Full path of compressed file that will be used to generate
 	// the string representation of the source ssh location 
@@ -64,10 +71,18 @@ int main(int argc, char **argv) {
 	// String representation of destination location
 	char *dest_str = NULL;
 
+	// Set default verbose mode 
+	verbose = 1;
+	// Set default log level(facility_priority)
+	log_level = LOG_ERR;
+
 	// default compression algorithm set to bz2
 	compression = 'j';
 
-	while ((option = getopt_long(argc, argv, "hf:jo:z", long_options, &option_index)) != -1) {
+	// Start connection with rsyslog server
+	openlog(PROGRAM_NAME, LOG_CONS | LOG_PID, LOG_USER);
+
+	while ((option = getopt_long(argc, argv, "hf:jo:qvz", long_options, &option_index)) != -1) {
 		switch(option) {
 		case 'h':
 			usage();
@@ -76,7 +91,6 @@ int main(int argc, char **argv) {
 		case 'f':
 			filename = strdup(optarg);
 			if (filename == NULL) {
-				fprintf(stderr, "Failed to retrieve file to backup!\n");
 				status = EXIT_FAILURE;
 
 				goto end;
@@ -90,11 +104,20 @@ int main(int argc, char **argv) {
 		case 'o':
 			output_filename = strdup(optarg);
 			if (output_filename == NULL) {
-				fprintf(stderr, "Failed to retrieve output filename!\n");
 				status = EXIT_FAILURE;
 
 				goto end;
 			}
+			break;
+
+		case 'q':
+			// This is a global variable defined in "verbose.h"
+			verbose = 0;
+			ssh_log_level = SSH_LOG_NONE;
+			break;
+
+		case 'v':
+			log_level++;
 			break;
 
 		case 'z':
@@ -106,15 +129,21 @@ int main(int argc, char **argv) {
 		}
 	}
 
+	if (compression == 'j') {
+		log_message(LOG_INFO, "Compression algorithm set to bz2");
+	} else {
+		log_message(LOG_INFO, "Compression algorithm set to gzip");
+	}
+
 	if (filename == NULL) {
-		fprintf(stderr, "Output filename is not set!\n");
+		log_message(LOG_ERR, "Name of file to be compressed is not set!");
 
 		status = EXIT_FAILURE;
 		goto end;
 	}
 
 	if (output_filename == NULL) {
-		fprintf(stderr, "Output filename is not set!\n");
+		log_message(LOG_ERR, "Output filename is not set");
 
 		status = EXIT_FAILURE;
 		goto end;
@@ -122,88 +151,159 @@ int main(int argc, char **argv) {
 
 	// Check if file to backup exists
 	if ((access(filename, F_OK)) == -1) {
-		if (asprintf(&err_msg, "%s does not exist\n", filename) > 0) {
-			errmsg(err_msg);
+		if (asprintf(&message, "%s does not exist\n", filename) > 0) {
+			log_message(LOG_ERR, message);
 
 			status = EXIT_FAILURE;
 			goto end;
 		}
 	}
 
-	if (create(output_filename, compression, filename, verbose) < 0) {
-		if (asprintf(&err_msg, "Failed to compress %s", filename) > 0) {
-			errmsg(err_msg);
+	if (asprintf(&message, "Compressing %s", filename) > 0) {
+		log_message(LOG_INFO, message);
+
+		free(message);
+		message = NULL;
+	}
+
+	if (create(output_filename, compression, filename) < 0) {
+		if (asprintf(&message, "Failed to compress %s", filename) > 0) {
+			log_message(LOG_ERR, message);
 
 			status = EXIT_FAILURE;
 			goto end;
+		}
+	} else {
+		if (asprintf(&message, "%s compressed successfully", filename) > 0) {
+			log_message(LOG_INFO, message);
+
+			free(message);
+			message = NULL;
 		}
 	}
 
 	// Retrieve real path of file to use it on source ssh location
 	local_path = realpath(output_filename, NULL);
 	if (local_path == NULL) {
-		perror("realpath");
+		if (asprintf(&message, "realpath failed: %s", strerror(errno)) > 0) {
+			log_message(LOG_ERR, message);
+		}
 		
 		status = EXIT_FAILURE;
 		goto end;
 	}
 
 	// Generate string representation of source location
-	str_len = strlen(USERNAME) + 1 + strlen(HOST) + 1 + strlen(local_path) + 1;
-	src_str = (char*) malloc(str_len);
-	if (src_str == NULL) {
+	if (asprintf(&src_str, "%s@%s:%s", USERNAME, HOST, local_path) < 0) {
+		log_message(LOG_ERR, "Failed to allocate memory for string representation of ssh source location");
+
 		status = EXIT_FAILURE;
 		goto end;
 	}
-	snprintf(src_str, str_len, "%s@%s:%s", USERNAME, HOST, local_path);
 
 	// Parse and create source location
     src = parse_location(src_str);
     if (src == NULL) {
-		fprintf(stderr, "Failed to parse src location\n");
+		log_message(LOG_ERR, "Failed to parse source location");
 
 		status = EXIT_FAILURE;
 		goto end;
-    }
+    } else {
+		if (asprintf(&message, "%s parsed successfully", src_str) > 0) {
+			log_message(LOG_INFO, message);
+
+			free(message);
+			message = NULL;
+		}
+	}
 
 	// Generate string representation of destination location
-	str_len = strlen(USERNAME) + 1 + strlen(HOST) + 1 + strlen(REMOTE_DIR) + 1;
-	dest_str = (char*) malloc(str_len);
-	if (dest_str == NULL) {
+	if (asprintf(&dest_str, "%s@%s:%s", USERNAME, REMOTE_HOST, REMOTE_DIR) < 0) {
+		log_message(LOG_ERR, "Failed to allocate memory for string representation of ssh destination location");
+
 		status = EXIT_FAILURE;
 		goto end;
 	}
-	snprintf(dest_str, str_len, "%s@%s:%s", USERNAME, REMOTE_HOST, REMOTE_DIR);
 
 	// Parse and create destination location
     dest = parse_location(dest_str);
     if (dest == NULL) {
-		fprintf(stderr, "Failed to parse dest location\n");
+		if (asprintf(&message, "Failed to parse %s", dest_str) > 0) {
+			log_message(LOG_ERR, message);
+		}
 
 		status = EXIT_FAILURE;
 		goto end;
-    }
+	} else {
+		if (asprintf(&message, "%s successfully parsed", dest_str) > 0) {
+			log_message(LOG_INFO, message);
 
+			free(message);
+			message = NULL;
+		}
+	}
 	// Open a connection to each location
 	if (open_location(src, READ) < 0) {
+		if (asprintf(&message, "Failed to open %s", src_str) > 0) {
+			log_message(LOG_ERR, message);
+		}
+
 		status = EXIT_FAILURE;
 		goto end;
+	} else {
+		if (asprintf(&message, "%s successfully opened", src_str) > 0) {
+			log_message(LOG_INFO, message);
+
+			free(message);
+			message = NULL;
+		}
 	}
 
 	if (open_location(dest, WRITE) < 0) {
+		if (asprintf(&message, "Failed to open %s", dest_str) > 0) {
+			log_message(LOG_ERR, message);
+		}
+
 		status = EXIT_FAILURE;
 		goto end;
+	} else {
+		if (asprintf(&message, "%s successfully opened", dest_str) > 0) {
+			log_message(LOG_INFO, message);
+
+			free(message);
+			message = NULL;
+		}
+	}
+
+	if (asprintf(&message, "Sending %s to %s through a ssh tunel", output_filename, REMOTE_HOST) > 0) {
+		log_message(LOG_INFO, message);
+
+		free(message);
+		message = NULL;
 	}
 
 	if (do_copy(src, dest, 0) < 0) {
+		if (asprintf(&message, "Failed to write %s into %s", output_filename, dest_str) > 0) {
+			log_message(LOG_ERR, message);
+		}
+
 		status = EXIT_FAILURE;
 		goto end;
+	} else {
+		if (asprintf(&message, "%s successfully sent to %s", output_filename, REMOTE_HOST) > 0) {
+			log_message(LOG_INFO, message);
+
+			free(message);
+			message = NULL;
+		}
 	}
 
 end:
-	if (err_msg != NULL) {
-		free(err_msg);
-		err_msg = NULL;
+	closelog();
+
+	if (message != NULL) {
+		free(message);
+		message = NULL;
 	}
 
 	if (filename != NULL) {

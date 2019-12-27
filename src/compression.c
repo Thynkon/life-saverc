@@ -1,3 +1,6 @@
+#include "asprintf.h"
+
+#include <stdlib.h>
 #include <string.h>
 
 #include <sys/stat.h>
@@ -6,14 +9,21 @@
 #include <archive.h>
 #include <archive_entry.h>
 
-#include "error-format.h"
+#include <syslog.h>
+#include <sys/syslog.h>
 
-int create(char *filename, int compression, char *argv, int verbose) {
-	struct archive *a;
-	struct archive_entry *entry;
+#include "error-format.h"
+#include "verbose.h"
+
+int create(char *filename, int compression, char *argv) {
 	ssize_t len;
 	int fd = 0;
+
 	char buff[16384];
+	char *message = NULL;
+
+	struct archive *a = NULL;
+	struct archive_entry *entry = NULL;
 
 	a = archive_write_new();
 
@@ -49,14 +59,16 @@ int create(char *filename, int compression, char *argv, int verbose) {
 
 	r = archive_read_disk_open(disk, argv);
 	if (r != ARCHIVE_OK) {
-		errmsg(archive_error_string(disk));
-		errmsg("\n");
+		if (asprintf(&message, "%s", archive_error_string(disk)) > 0) {
+			log_message(LOG_ERR, message);
+
+			free(message);
+			message = NULL;
+		}
 		return -1;
 	}
 
 	for (;;) {
-		int needcr = 0;
-
 		entry = archive_entry_new();
 		if (entry == NULL) {
 			break;
@@ -68,23 +80,27 @@ int create(char *filename, int compression, char *argv, int verbose) {
 		}
 
 		if (r != ARCHIVE_OK) {
-			errmsg(archive_error_string(disk));
-			errmsg("\n");
+			if (asprintf(&message, "%s", archive_error_string(disk)) > 0) {
+				log_message(LOG_ERR, message);
+
+				free(message);
+				message = NULL;
+			}
 			return -1;
 		}
 
 		archive_read_disk_descend(disk);
-		if (verbose) {
-			msg("a ");
-			msg(archive_entry_pathname(entry));
-			needcr = 1;
-		}
+
 		r = archive_write_header(a, entry);
 		if (r < ARCHIVE_OK) {
-			errmsg(": ");
-			errmsg(archive_error_string(a));
-			needcr = 1;
+			if (asprintf(&message, "%s", archive_error_string(a)) > 0) {
+				log_message(LOG_ERR, message);
+
+				free(message);
+				message = NULL;
+			}
 		}
+
 		if (r == ARCHIVE_FATAL) {
 			return -1;
 		}
@@ -103,9 +119,6 @@ int create(char *filename, int compression, char *argv, int verbose) {
 
 		archive_entry_free(entry);
 		entry = NULL;
-		if (needcr) {
-			msg("\n");
-		}
 	}
 
 	archive_read_close(disk);

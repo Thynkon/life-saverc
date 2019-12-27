@@ -10,6 +10,8 @@
 #define REMOTE_HOST "127.0.0.1"
 #define REMOTE_DIR "/tmp"
 
+extern int ssh_log_level;
+
 struct location {
 	int is_ssh;
 	char *user;
