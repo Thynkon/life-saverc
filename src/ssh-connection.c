@@ -17,6 +17,7 @@
 
 #include "ssh-connection.h"
 #include "verbose.h"
+#include "match-regex.h"
 
 int ssh_log_level = SSH_LOG_INFO;
 
@@ -226,29 +227,49 @@ void location_free(struct location *loc) {
 }
 
 struct location *parse_location(char *loc) {
+	int rc = 0;
 	int str_len = 0;
 	char *message = NULL;
     struct location *location;
 
-	size_t nmatch = 4; // 3 substrings + 1 (contains full match)
 	regex_t preg;
-	regmatch_t pmatch[nmatch];
+	size_t nmatch = 0;
+	regmatch_t *pmatch = NULL;
 
-	if (regcomp(&preg, "^(.*)@(.*):(.*)$", REG_EXTENDED) != 0) {
-		log_message(LOG_ERR, "Failed to compile ssh location regex");
+	nmatch = 4; // 3 substrings + 1 (contains full match)
+	pmatch = malloc(sizeof(regmatch_t) * nmatch);
+	if (pmatch == NULL) {
 		return NULL;
 	}
 
-	if (regexec(&preg, loc, nmatch, pmatch, 0) != 0) {
-		if (asprintf(&message, "Location %s is invalid", loc) > 0) {
+	// Check first if it is a ssh location, if it isn't, then is a unix path
+	rc = match_regex(&preg, SSH_LOCATION_REGEX, loc, &pmatch, nmatch, REG_EXTENDED);
+	if (rc != REG_NOERROR) {
+		if (rc == REG_NOMATCH) {
+			location = malloc(sizeof(struct location));
+			if (location == NULL) {
+				return NULL;
+			}
+			memset(location, 0, sizeof(struct location));
+
+			location->is_ssh = 0;
+			location->path = strdup(loc);
+
+			free(pmatch);
+			pmatch = NULL;
+			regfree(&preg);
+
+			return location;
+		} else {
+			message = get_regerror(rc, &preg);
+			if (message == NULL) {
+				return NULL;
+			}
 			log_message(LOG_ERR, message);
 
 			free(message);
 			message = NULL;
 		}
-		regfree(&preg);
-
-		return NULL;
 	}
 
     location = malloc(sizeof(struct location));
@@ -259,25 +280,24 @@ struct location *parse_location(char *loc) {
 
     location->host = location->user = NULL;
 
-	str_len = (pmatch[1].rm_eo -  pmatch[1].rm_so) + 1; // + 1 for '\0' char
-	location->user = (char*) malloc(str_len * sizeof(char));
-	if (location->user == NULL) {
+	// Retrieve user
+	str_len = (pmatch[1].rm_eo -  pmatch[1].rm_so);
+	if (asprintf(&location->user, "%.*s", str_len, loc + pmatch[1].rm_so) < 0) {
 		return NULL;
 	}
-	snprintf(location->user, str_len, "%.*s", str_len, loc + pmatch[1].rm_so);
 
-	str_len = (pmatch[2].rm_eo -  pmatch[2].rm_so) + 1; // + 1 for '\0' char
-	location->host = (char*) malloc(str_len * sizeof(char));
-	if (location->host == NULL) {
+	// Retrieve host
+	str_len = (pmatch[2].rm_eo -  pmatch[2].rm_so);
+	if (asprintf(&location->host, "%.*s", str_len, loc + pmatch[2].rm_so) < 0) {
 		free(location->user);
 		location->user = NULL;
+
 		return NULL;
 	}
-	snprintf(location->host, str_len, "%.*s", str_len, loc + pmatch[2].rm_so);
 
-	str_len = (pmatch[3].rm_eo -  pmatch[3].rm_so) + 1; // + 1 for '\0' char
-	location->path = (char*) malloc(str_len * sizeof(char));
-	if (location->path == NULL) {
+	// Retrieve path
+	str_len = (pmatch[3].rm_eo -  pmatch[3].rm_so);
+	if (asprintf(&location->path, "%.*s", str_len, loc + pmatch[3].rm_so) < 0) {
 		free(location->user);
 		location->user = NULL;
 
@@ -286,33 +306,14 @@ struct location *parse_location(char *loc) {
 
 		return NULL;
 	}
-	snprintf(location->path, str_len, "%.*s", str_len, loc + pmatch[3].rm_so);
 
 
 	location->is_ssh = 1; // only for now
+
+	free(pmatch);
+	pmatch = NULL;
 	regfree(&preg);
-	/*
-    ptr = strchr(loc, ':');
 
-    if (ptr != NULL) {
-        location->is_ssh = 1;
-        location->path = strdup(ptr + 1);
-        *ptr = '\0';
-        ptr = strchr(loc, '@');
-		printf("host is %s\n", ptr);
-
-        if (ptr != NULL) {
-            location->host = strdup(ptr + 1);
-            *ptr = '\0';
-            location->user = strdup(loc);
-        } else {
-            location->host = strdup(loc);
-        }
-    } else {
-        location->is_ssh = 0;
-        location->path = strdup(loc);
-    }
-	*/
     return location;
 }
 
