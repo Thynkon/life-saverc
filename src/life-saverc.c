@@ -196,13 +196,8 @@ int main(int argc, char **argv) {
 		goto end;
 	}
 
-	// Generate string representation of source location
-	if (asprintf(&src_str, "%s@%s:%s", USERNAME, HOST, local_path) < 0) {
-		log_message(LOG_ERR, "Failed to allocate memory for string representation of ssh source location");
-
-		status = EXIT_FAILURE;
-		goto end;
-	}
+	// File to be send through ssh is the one has been compressed
+	src_str = local_path;
 
 	// Parse and create source location
     src = parse_location(src_str);
@@ -212,7 +207,7 @@ int main(int argc, char **argv) {
 		status = EXIT_FAILURE;
 		goto end;
     } else {
-		if (asprintf(&message, "%s parsed successfully", src_str) > 0) {
+		if (asprintf(&message, "%s successfully parsed", src_str) > 0) {
 			log_message(LOG_INFO, message);
 
 			free(message);
