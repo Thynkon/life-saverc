@@ -13,6 +13,8 @@
 
 // contains allow() (to check if a file exists)
 #include <unistd.h>
+// contains basename()
+#include <libgen.h>
 
 #include <libssh/libssh.h>
 
@@ -71,6 +73,9 @@ int main(int argc, char **argv) {
 
 	// String representation of source location
 	char *src_str = NULL;
+	// Basename of local file that will be used in log messages
+	char *src_basename = NULL;
+
 	// String representation of destination location
 	char *dest_str = NULL;
 
@@ -197,7 +202,7 @@ int main(int argc, char **argv) {
 	}
 
 	// File to be send through ssh is the one has been compressed
-	src_str = local_path;
+	src_str = strdup(local_path);
 
 	// Parse and create source location
     src = parse_location(src_str);
@@ -214,6 +219,9 @@ int main(int argc, char **argv) {
 			message = NULL;
 		}
 	}
+
+	// Dont check return value because basename() does not return error values
+	src_basename = basename(src->path);
 
 	// Generate string representation of destination location
 	if (asprintf(&dest_str, "%s@%s:%s", USERNAME, REMOTE_HOST, REMOTE_DIR) < 0) {
@@ -273,7 +281,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	if (asprintf(&message, "Sending %s to %s through a ssh tunel", output_filename, REMOTE_HOST) > 0) {
+	if (asprintf(&message, "Sending %s to %s through a ssh tunel", src_basename, REMOTE_HOST) > 0) {
 		log_message(LOG_INFO, message);
 
 		free(message);
@@ -281,14 +289,14 @@ int main(int argc, char **argv) {
 	}
 
 	if (do_copy(src, dest, 0) < 0) {
-		if (asprintf(&message, "Failed to write %s into %s", output_filename, dest_str) > 0) {
+		if (asprintf(&message, "Failed to write %s into %s", src_str, dest_str) > 0) {
 			log_message(LOG_ERR, message);
 		}
 
 		status = EXIT_FAILURE;
 		goto end;
 	} else {
-		if (asprintf(&message, "%s successfully sent to %s", output_filename, REMOTE_HOST) > 0) {
+		if (asprintf(&message, "%s successfully sent to %s", src_basename, REMOTE_HOST) > 0) {
 			log_message(LOG_INFO, message);
 
 			free(message);
@@ -316,7 +324,7 @@ end:
 
 	if (local_path != NULL) {
 		free(local_path);
-		output_filename = NULL;
+		local_path = NULL;
 	}
 
 	if (src_str != NULL) {
