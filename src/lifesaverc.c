@@ -29,17 +29,31 @@
 #include "verbose.h"
 
 void usage(void) {
-	char *help_msg = "Usage:\n"
+	int rc = 0;
+	char *help_msg = NULL;
+
+#if defined(PACKAGE_VERSION) && defined (PACKAGE_NAME)
+	rc = asprintf(&help_msg,
+		"usage: %s\n"
 		"-f, --file filename\tFile to backup\n"
 		"-h, --help\t\tDisplay this message\n"
 		"-j, --bzip2\t\tFilter the archive through bzip2\n"
 		"-o, --output\t\tName of the compressed file\n"
 		"-q, --quiet\t\tDon't send any log messages\n"
 		"-v, --verbosity\t\tIncrement the log level of messages\n"
-		"-z, --gzip\t\tFilter the archive through gzip";
+		"-V, --version\t\t%s version\n"
+		"-z, --gzip\t\tFilter the archive through gzip",
+		PACKAGE_NAME, PACKAGE_NAME
+	);
 
-	log_message(LOG_ERR, help_msg);
-	exit(EXIT_FAILURE);
+	if (rc > 0) {
+		log_message(LOG_ERR, help_msg);
+		exit(EXIT_FAILURE);
+
+		free(help_msg);
+		help_msg = NULL;
+	}
+#endif
 }
 
 int main(int argc, char **argv) {
@@ -58,6 +72,7 @@ int main(int argc, char **argv) {
 		{"output",		required_argument,	0, 'o'},
 		{"quiet",		required_argument,	0, 'q'},
 		{"verbosity", 	required_argument,	0, 'v'},
+		{"version", 	required_argument,	0, 'V'},
 		{"gzip",		no_argument,		0, 'z'}
 	};
 
@@ -90,7 +105,7 @@ int main(int argc, char **argv) {
 	// Start connection with rsyslog server
 	openlog(PROGRAM_NAME, LOG_CONS | LOG_PID, LOG_USER);
 
-	while ((option = getopt_long(argc, argv, "hf:jo:qvz", long_options, &option_index)) != -1) {
+	while ((option = getopt_long(argc, argv, "hf:jo:qvVz", long_options, &option_index)) != -1) {
 		switch(option) {
 		case 'h':
 			usage();
@@ -128,11 +143,25 @@ int main(int argc, char **argv) {
 			log_level++;
 			break;
 
+		case 'V':
+#if defined(PACKAGE_VERSION) && defined (PACKAGE_NAME)
+			if (asprintf(&message, "%s %s", PACKAGE_NAME, PACKAGE_VERSION) > 0) {
+				log_message(LOG_ERR, message);
+
+				free(message);
+				message = NULL;
+			}
+#endif
+		
+			status = EXIT_SUCCESS;
+			goto end;
+
 		case 'z':
 			compression = option;
 			break;
 
 		default:
+			usage();
 			break;
 		}
 	}
