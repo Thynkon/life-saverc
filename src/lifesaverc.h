@@ -1,5 +1,5 @@
-#ifndef LIFE_SAVERH
-#define LIFE_SAVERH
+#ifndef LIFE_SAVER_H
+#define LIFE_SAVER_H
 
 #define PROGRAM_NAME "life-saverc"
 

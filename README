@@ -1,3 +1,10 @@
+compilation
+
+mkdir build
+cd build
+../configure
+make
+
 Dependencies:
 dnf install libarchive-devel libssh-devel
 apt install libarchive-dev libssh-dev

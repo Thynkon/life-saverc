@@ -22,7 +22,7 @@
 #include <sys/syslog.h>
 #include <syslog.h>
 
-#include "life-saverc.h"
+#include "lifesaverc.h"
 #include "error-format.h"
 #include "compression.h"
 #include "ssh-connection.h"
