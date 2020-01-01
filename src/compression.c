@@ -121,6 +121,9 @@ int create(char *filename, int compression, char *argv) {
 		entry = NULL;
 	}
 
+	archive_entry_free(entry);
+	entry = NULL;
+
 	archive_read_close(disk);
 	archive_read_free(disk);
 	disk = NULL;
