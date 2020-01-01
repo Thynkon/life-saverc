@@ -28,11 +28,14 @@
 #include "ssh-connection.h"
 #include "verbose.h"
 
+#if !defined(PACKAGE_VERSION) || !defined (PACKAGE_NAME)
+#error PACKAGE_VERSION or PACKAGE_NAME missing!
+#endif
+
 void usage(void) {
 	int rc = 0;
 	char *help_msg = NULL;
 
-#if defined(PACKAGE_VERSION) && defined (PACKAGE_NAME)
 	rc = asprintf(&help_msg,
 		"usage: %s\n"
 		"-f, --file filename\tFile to backup\n"
@@ -53,7 +56,6 @@ void usage(void) {
 		free(help_msg);
 		help_msg = NULL;
 	}
-#endif
 }
 
 int main(int argc, char **argv) {
@@ -154,14 +156,12 @@ int main(int argc, char **argv) {
 			break;
 
 		case 'V':
-#if defined(PACKAGE_VERSION) && defined (PACKAGE_NAME)
 			if (asprintf(&message, "%s %s", PACKAGE_NAME, PACKAGE_VERSION) > 0) {
 				log_message(LOG_ERR, message);
 
 				free(message);
 				message = NULL;
 			}
-#endif
 		
 			status = EXIT_SUCCESS;
 			goto end;
