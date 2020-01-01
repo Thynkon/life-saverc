@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
 	compression = 'j';
 
 	// Start connection with rsyslog server
-	openlog(PROGRAM_NAME, LOG_CONS | LOG_PID, LOG_USER);
+	openlog(PACKAGE_NAME, LOG_CONS | LOG_PID, LOG_USER);
 
 	while ((option = getopt_long(argc, argv, "hf:jo:qvVz", long_options, &option_index)) != -1) {
 		switch(option) {
