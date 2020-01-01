@@ -345,11 +345,6 @@ int main(int argc, char **argv) {
 end:
 	closelog();
 
-	if (message != NULL) {
-		free(message);
-		message = NULL;
-	}
-
 	if (filename != NULL) {
 		free(filename);
 		filename = NULL;
@@ -365,9 +360,39 @@ end:
 		local_path = NULL;
 	}
 
+	if (src != NULL) {
+		if (src->session) {
+			close_location(src);
+
+			if (asprintf(&message, "%s closed", src_str) > 0) {
+				log_message(LOG_INFO, message);
+
+				free(message);
+				message = NULL;
+			}
+		}
+		location_free(src);
+		src = NULL;
+	}
+
 	if (src_str != NULL) {
 		free(src_str);
 		src_str = NULL;
+	}
+
+	if (dest != NULL) {
+		if (dest->session) {
+			close_location(dest);
+
+			if (asprintf(&message, "%s closed", dest_str) > 0) {
+				log_message(LOG_INFO, message);
+
+				free(message);
+				message = NULL;
+			}
+		}
+		location_free(dest);
+		dest = NULL;
 	}
 
 	if (dest_str != NULL) {
@@ -375,20 +400,9 @@ end:
 		dest_str = NULL;
 	}
 
-	if (src != NULL) {
-		if (src->session) {
-			close_location(src);
-		}
-		location_free(src);
-		src = NULL;
-	}
-
-	if (dest != NULL) {
-		if (dest->session) {
-			close_location(dest);
-		}
-		location_free(dest);
-		dest = NULL;
+	if (message != NULL) {
+		free(message);
+		message = NULL;
 	}
 
 	return status;
