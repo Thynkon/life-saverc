@@ -183,8 +183,7 @@ ETAGS = etags
 CTAGS = ctags
 CSCOPE = cscope
 DIST_SUBDIRS = $(SUBDIRS)
-am__DIST_COMMON = $(srcdir)/Makefile.in README compile install-sh \
-	missing
+am__DIST_COMMON = $(srcdir)/Makefile.in compile install-sh missing
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -312,8 +311,8 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = src
-EXTRA_DIST = autogen.sh
-dist_doc_DATA = README
+EXTRA_DIST = autogen.sh LICENSE
+dist_doc_DATA = README.md
 all: all-recursive
 
 .SUFFIXES:

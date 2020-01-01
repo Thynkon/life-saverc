@@ -1,3 +1,3 @@
 SUBDIRS = src
-EXTRA_DIST = autogen.sh
-dist_doc_DATA = README
+EXTRA_DIST = autogen.sh LICENSE
+dist_doc_DATA = README.md
