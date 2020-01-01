@@ -4,12 +4,6 @@
 #include <stdio.h>
 #include <libssh/libssh.h>
 
-#define USERNAME "thynkon"
-#define HOST "127.0.0.1"
-
-#define REMOTE_HOST "127.0.0.1"
-#define REMOTE_DIR "/tmp"
-
 #define SSH_LOCATION_REGEX "^(.*)@(.*):(.*)$"
 #define UNIX_PATH_REGEX "^\/$|(^(?=\/)|^\.|^\.\.|^\~|^\~(?=\/))(\/(?=[^\/\0])[^\/\0]+)*\/?$"
 

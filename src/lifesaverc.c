@@ -66,6 +66,7 @@ int main(int argc, char **argv) {
 	int option_index = 0;
 
 	struct option long_options[] = {
+		{"destination",	required_argument,	0, 'd'},
 		{"file",		required_argument,	0, 'f'},
 		{"help",		no_argument,		0, 'h'},
 		{"bzip2",		no_argument,		0, 'j'},
@@ -105,8 +106,17 @@ int main(int argc, char **argv) {
 	// Start connection with rsyslog server
 	openlog(PACKAGE_NAME, LOG_CONS | LOG_PID, LOG_USER);
 
-	while ((option = getopt_long(argc, argv, "hf:jo:qvVz", long_options, &option_index)) != -1) {
+	while ((option = getopt_long(argc, argv, "d:f:hjo:qvVz", long_options, &option_index)) != -1) {
 		switch(option) {
+		case 'd':
+			dest_str = strdup(optarg);
+			if (dest_str == NULL) {
+				status = EXIT_FAILURE;
+
+				goto end;
+			}
+			break;
+
 		case 'h':
 			usage();
 			break;
@@ -196,6 +206,13 @@ int main(int argc, char **argv) {
 		}
 	}
 
+	if (dest_str == NULL) {
+			log_message(LOG_ERR, "Destination location is not set");
+
+			status = EXIT_FAILURE;
+			goto end;
+	}
+
 	if (asprintf(&message, "Compressing %s", filename) > 0) {
 		log_message(LOG_INFO, message);
 
@@ -252,14 +269,6 @@ int main(int argc, char **argv) {
 	// Dont check return value because basename() does not return error values
 	src_basename = basename(src->path);
 
-	// Generate string representation of destination location
-	if (asprintf(&dest_str, "%s@%s:%s", USERNAME, REMOTE_HOST, REMOTE_DIR) < 0) {
-		log_message(LOG_ERR, "Failed to allocate memory for string representation of ssh destination location");
-
-		status = EXIT_FAILURE;
-		goto end;
-	}
-
 	// Parse and create destination location
     dest = parse_location(dest_str);
     if (dest == NULL) {
@@ -310,7 +319,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	if (asprintf(&message, "Sending %s to %s through a ssh tunel", src_basename, REMOTE_HOST) > 0) {
+	if (asprintf(&message, "Sending %s to through a ssh tunel", src_basename) > 0) {
 		log_message(LOG_INFO, message);
 
 		free(message);
@@ -325,7 +334,7 @@ int main(int argc, char **argv) {
 		status = EXIT_FAILURE;
 		goto end;
 	} else {
-		if (asprintf(&message, "%s successfully sent to %s", src_basename, REMOTE_HOST) > 0) {
+		if (asprintf(&message, "%s successfully sent", src_basename) > 0) {
 			log_message(LOG_INFO, message);
 
 			free(message);
