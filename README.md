@@ -31,7 +31,7 @@ Debian/Ubuntu
 
     sudo apt install libarchive-dev libssh-dev
 
-## Building
+## Building from code
 Create a build directory, where all objects files will be at.
 
     mkdir build
@@ -42,6 +42,12 @@ Then, check if your system has all required dependencies, compile and install li
     ../configure
     make
     sudo make install
+
+## Installation using rpm packages
+Install the rpm package that can be found on releases files or enable this repository.
+    dnf copr enable thynkon/lifesaverc
+
+For more details about lifesaverc build status refer to [lifesaverc copr repository](https://copr.fedorainfracloud.org/coprs/thynkon/lifesaverc).
 
 ## License
 This program is under the [GPLv3 License](LICENSE).
