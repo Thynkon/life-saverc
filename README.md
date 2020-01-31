@@ -45,6 +45,7 @@ Then, check if your system has all required dependencies, compile and install li
 
 ## Installation using rpm packages
 Install the rpm package that can be found on releases files or enable this repository.
+
     dnf copr enable thynkon/lifesaverc
 
 For more details about lifesaverc build status refer to [lifesaverc copr repository](https://copr.fedorainfracloud.org/coprs/thynkon/lifesaverc).
