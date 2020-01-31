@@ -41,7 +41,7 @@ void usage(void) {
 		"-d, --destination\tTarget host\n"
 		"-f, --file filename\tFile to backup\n"
 		"-h, --help\t\tDisplay this message\n"
-		"-j, --bzip2\t\tFilter the archive through bzip2\n"
+		"-j, --bzip2\t\tFilter archive through bzip2\n"
 		"-o, --output\t\tName of the compressed file\n"
 		"-q, --quiet\t\tDon't send any log messages\n"
 		"-v, --verbosity\t\tIncrement the log level of messages\n"
