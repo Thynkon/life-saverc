@@ -38,6 +38,7 @@ void usage(void) {
 
 	rc = asprintf(&help_msg,
 		"usage: %s\n"
+		"-d, --destination\tTarget host\n"
 		"-f, --file filename\tFile to backup\n"
 		"-h, --help\t\tDisplay this message\n"
 		"-j, --bzip2\t\tFilter the archive through bzip2\n"
@@ -45,7 +46,7 @@ void usage(void) {
 		"-q, --quiet\t\tDon't send any log messages\n"
 		"-v, --verbosity\t\tIncrement the log level of messages\n"
 		"-V, --version\t\t%s version\n"
-		"-z, --gzip\t\tFilter the archive through gzip",
+		"-z, --gzip\t\tFilter archive through gzip",
 		PACKAGE_NAME, PACKAGE_NAME
 	);
 
