@@ -39,7 +39,7 @@ Create a build directory, where all objects files will be at.
 
 Then, check if your system has all required dependencies, compile and install lifesaverc
 
-    ./configure
+    ../configure
     make
     sudo make install
 
