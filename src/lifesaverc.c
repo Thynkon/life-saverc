@@ -74,9 +74,9 @@ int main(int argc, char **argv) {
 		{"help",		no_argument,		0, 'h'},
 		{"bzip2",		no_argument,		0, 'j'},
 		{"output",		required_argument,	0, 'o'},
-		{"quiet",		required_argument,	0, 'q'},
-		{"verbosity", 	required_argument,	0, 'v'},
-		{"version", 	required_argument,	0, 'V'},
+		{"quiet",		no_argument,		0, 'q'},
+		{"verbosity", 	no_argument,		0, 'v'},
+		{"version", 	no_argument,		0, 'V'},
 		{"gzip",		no_argument,		0, 'z'}
 	};
 
