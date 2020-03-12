@@ -23,7 +23,6 @@
 #include <syslog.h>
 
 #include "lifesaverc.h"
-#include "error-format.h"
 #include "compression.h"
 #include "ssh-connection.h"
 #include "verbose.h"

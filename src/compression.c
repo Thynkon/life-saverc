@@ -12,7 +12,6 @@
 #include <syslog.h>
 #include <sys/syslog.h>
 
-#include "error-format.h"
 #include "verbose.h"
 
 int create(char *filename, int compression, char *argv) {
