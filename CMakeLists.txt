@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 # set the project name and version
-project(lifesaverc VERSION 1.0 LANGUAGES C)
+project(lifesaverc VERSION 1.1 LANGUAGES C)
 
 find_library(LIB_SSH ssh)                                                                                                    
 if(NOT LIB_SSH)
