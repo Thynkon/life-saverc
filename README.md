@@ -37,9 +37,9 @@ Create a build directory, where all objects files will be at.
     mkdir build
     cd build
 
-Then, check if your system has all required dependencies, compile and install lifesaverc
+Then, check if your system has all required dependencies, compile and install lifesaverc. If you prefer clang over gcc, use **-DCMAKE_C_COMPILER=clang**.
 
-    ../configure
+    cmake -DCMAKE_C_COMPILER=gcc ..
     make
     sudo make install
 
@@ -47,6 +47,7 @@ Then, check if your system has all required dependencies, compile and install li
 Install the rpm package that can be found on releases files or enable this repository.
 
     dnf copr enable thynkon/lifesaverc
+    dnf install lifesaverc
 
 For more details about lifesaverc build status refer to [lifesaverc copr repository](https://copr.fedorainfracloud.org/coprs/thynkon/lifesaverc).
 
