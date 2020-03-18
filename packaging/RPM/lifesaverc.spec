@@ -7,7 +7,6 @@ License:        GPLv3+
 URL:            https://github.com/Thynkon/%{name}
 Source0:        %{name}-%{version}.tar.gz
 
-BuildRequires:  gcc
 BuildRequires:  cmake
 BuildRequires:  libarchive-devel
 BuildRequires:  libssh-devel
