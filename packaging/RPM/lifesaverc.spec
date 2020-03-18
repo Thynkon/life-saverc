@@ -22,7 +22,7 @@ For further details read the README.md file.
 
 
 %build
-%cmake -DCMAKE_C_COMPILER=gcc .
+%cmake .
 %make_build
 
 
