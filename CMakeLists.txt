@@ -17,7 +17,7 @@ endif()
 ADD_COMPILE_OPTIONS(-Wall -Werror)
 
 # directory to look for header files
-include_directories(include)
+include_directories(src/include)
 
 # source files
 file(GLOB SOURCES "src/*.c")
