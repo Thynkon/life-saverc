@@ -37,9 +37,9 @@ Create a build directory, where all objects files will be at.
     mkdir build
     cd build
 
-Then, check if your system has all required dependencies, compile and install lifesaverc. If you prefer clang over gcc, use **-DCMAKE_C_COMPILER=clang**.
+Then, check if your system has all required dependencies, compile and install lifesaverc. You can define the compiler to use by setting **CMAKE_C_COMPILER**. For example:**cmake -DCMAKE_C_COMPILER=clang**.
 
-    cmake -DCMAKE_C_COMPILER=gcc ..
+    cmake ..
     make
     sudo make install
 
