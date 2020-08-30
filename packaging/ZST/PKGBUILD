@@ -1,0 +1,27 @@
+# Maintainer: Mário Ferreira <thynkon@protonmail.com>
+
+pkgname=lifesaverc
+pkgver=1.1
+pkgrel=1
+pkgdesc="A simple C program that backups some files"
+arch=("x86_64")
+url="https://github.com/Thynkon/lifesaverc"
+license=('GPL3')
+makedepends=("cmake" "make")
+depends=("libarchive" "libssh")
+provides=("$pkgname")
+sha256sums=("cac7f575dd567cd043c9852808951cf499e816ace627cc45b0a6334be56d6493")
+source=("$pkgname-$pkgver.tar.gz::https://github.com/Thynkon/$pkgname/archive/v$pkgver.tar.gz")
+
+_build_directory="build"
+
+build() {
+	cd "$pkgname-$pkgver"
+	cmake -B "${_build_directory}"
+	make -C "${_build_directory}"
+}
+
+package() {
+	cd "$pkgname-$pkgver"
+	make -C "${_build_directory}" DESTDIR="$pkgdir/" install
+}
