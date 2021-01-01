@@ -5,7 +5,7 @@
 
 #ifdef __GNUC__
 int vscprintf(const char *format, va_list ap) {
-	int retval = 0;
+    int retval = 0;
     va_list ap_copy;
 
     va_copy(ap_copy, ap);
@@ -24,9 +24,9 @@ int vscprintf(const char *format, va_list ap) {
  */
 #ifdef _MSC_VER
 int vasprintf(char **strp, const char *format, va_list ap) {
-	int len = 0;
-	int retval = 0;
-	char *std = NULL;
+    int len = 0;
+    int retval = 0;
+    char *std = NULL;
 
     len = vscprintf(format, ap);
     if (len == -1) {
@@ -49,7 +49,7 @@ int vasprintf(char **strp, const char *format, va_list ap) {
 }
 
 int asprintf(char **strp, const char *format, ...) {
-	int retval = 0;
+    int retval = 0;
     va_list ap;
 
     va_start(ap, format);

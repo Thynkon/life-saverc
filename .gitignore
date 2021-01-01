@@ -35,7 +35,7 @@
 *.i*86
 *.x86_64
 *.hex
-life-saverc
+lifesaverc
 
 # Debug files
 *.dSYM/
@@ -54,3 +54,6 @@ dkms.conf
 
 # Autotools
 *.cache
+
+# build directory
+build/*
